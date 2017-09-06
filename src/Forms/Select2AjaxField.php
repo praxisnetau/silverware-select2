@@ -22,8 +22,14 @@ use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Core\Convert;
 use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\DataObjectInterface;
+use SilverStripe\ORM\Map;
+use SilverStripe\ORM\Relation;
+use SilverStripe\ORM\SS_List;
 use SilverStripe\View\SSViewer;
 use SilverStripe\View\ViewableData;
+use ArrayAccess;
 
 /**
  * An extension of the Select2 field class for a Select2 Ajax field.
@@ -73,6 +79,13 @@ class Select2AjaxField extends Select2Field
      * @var array
      */
     protected $ajaxConfig;
+    
+    /**
+     * Defines whether Ajax is enabled or disabled for the field.
+     *
+     * @var boolean
+     */
+    protected $ajaxEnabled = true;
     
     /**
      * The data class to search via Ajax.
@@ -175,6 +188,22 @@ class Select2AjaxField extends Select2Field
     }
     
     /**
+     * Defines the source for the receiver.
+     *
+     * @param array|ArrayAccess
+     *
+     * @return $this
+     */
+    public function setSource($source)
+    {
+        if ($source instanceof DataList) {
+            $this->setDataClass($source->dataClass());
+        }
+        
+        return parent::setSource($source);
+    }
+    
+    /**
      * Defines either the named Ajax config value, or the Ajax config array.
      *
      * @param string|array $arg1
@@ -207,6 +236,30 @@ class Select2AjaxField extends Select2Field
         }
         
         return $this->ajaxConfig;
+    }
+    
+    /**
+     * Defines the value of the ajaxEnabled attribute.
+     *
+     * @param boolean $ajaxEnabled
+     *
+     * @return $this
+     */
+    public function setAjaxEnabled($ajaxEnabled)
+    {
+        $this->ajaxEnabled = (boolean) $ajaxEnabled;
+        
+        return $this;
+    }
+    
+    /**
+     * Answers the value of the ajaxEnabled attribute.
+     *
+     * @return boolean
+     */
+    public function getAjaxEnabled()
+    {
+        return $this->ajaxEnabled;
     }
     
     /**
@@ -434,11 +487,25 @@ class Select2AjaxField extends Select2Field
     {
         $attributes = parent::getDataAttributes();
         
-        foreach ($this->getFieldAjaxConfig() as $key => $value) {
-            $attributes[sprintf('data-ajax--%s', $key)] = $this->getDataValue($value);
+        if ($this->isAjaxEnabled()) {
+            
+            foreach ($this->getFieldAjaxConfig() as $key => $value) {
+                $attributes[sprintf('data-ajax--%s', $key)] = $this->getDataValue($value);
+            }
+            
         }
         
         return $attributes;
+    }
+    
+    /**
+     * Answers true if Ajax is enabled for the field.
+     *
+     * @return boolean
+     */
+    public function isAjaxEnabled()
+    {
+        return $this->ajaxEnabled;
     }
     
     /**
@@ -458,7 +525,7 @@ class Select2AjaxField extends Select2Field
         
         // Initialise:
         
-        $data = [];
+        $data = ['results' => []];
         
         // Create Data List:
         
@@ -524,15 +591,77 @@ class Select2AjaxField extends Select2Field
     }
     
     /**
-     * Answers the record identified by the recorded field value.
+     * Loads the value of the field from the given relation.
+     *
+     * @param Relation $relation
+     *
+     * @return void
+     */
+    public function loadFromRelation(Relation $relation)
+    {
+        parent::setValue($relation->column($this->getIDField()));
+    }
+    
+    /**
+     * Saves the value of the field into the given relation.
+     *
+     * @param Relation $relation
+     *
+     * @return void
+     */
+    public function saveIntoRelation(Relation $relation)
+    {
+        $relation->setByIDList(
+            $this->getList()->filter(
+                $this->getIDField(),
+                $this->getValueArray()
+            )->getIDList()
+        );
+    }
+    
+    /**
+     * Answers true if the given data value and user value match (i.e. the value is selected).
+     *
+     * @param mixed $dataValue
+     * @param mixed $userValue
+     *
+     * @return boolean
+     */
+    public function isSelectedValue($dataValue, $userValue)
+    {
+        if (is_array($userValue) && in_array($dataValue, $userValue)) {
+            return true;
+        }
+        
+        return parent::isSelectedValue($dataValue, $userValue);
+    }
+    
+    /**
+     * Answers the source array for the field options, including the empty string, if present.
+     *
+     * @return array
+     */
+    public function getSourceEmpty()
+    {
+        if (!$this->isAjaxEnabled()) {
+            return parent::getSourceEmpty();
+        } elseif ($this->getHasEmptyDefault()) {
+            return ['' => $this->getEmptyString()];
+        }
+        
+        return [];
+    }
+    
+    /**
+     * Answers the record identified by the given value.
+     *
+     * @param mixed $id
      *
      * @return ViewableData
      */
-    public function getValueRecord()
+    protected function getValueRecord($id)
     {
-        if ($id = $this->Value()) {
-            return $this->getList()->byID($id);
-        }
+        return $this->getList()->find($this->getIDField(), $id);
     }
     
     /**
@@ -605,6 +734,38 @@ class Select2AjaxField extends Select2Field
     }
     
     /**
+     * Converts the given data source into an array.
+     *
+     * @param array|ArrayAccess $source
+     *
+     * @return array
+     */
+    protected function getListMap($source)
+    {
+        // Extract Map from ID / Text Fields:
+        
+        if ($source instanceof SS_List) {
+            $source = $source->map($this->getIDField(), $this->getTextField());
+        }
+        
+        // Convert Map to Array:
+        
+        if ($source instanceof Map) {
+            $source = $source->toArray();
+        }
+        
+        // Determine Invalid Types:
+        
+        if (!is_array($source) && !($source instanceof ArrayAccess)) {
+            user_error('$source passed in as invalid type', E_USER_ERROR);
+        }
+        
+        // Answer Data Source:
+        
+        return $source;
+    }
+    
+    /**
      * Answers the field config for the receiver.
      *
      * @return array
@@ -613,8 +774,16 @@ class Select2AjaxField extends Select2Field
     {
         $config = parent::getFieldConfig();
         
-        if ($value = $this->Value()) {
-            $config['data'] = [$this->getResultData($this->getValueRecord(), true)];
+        if ($values = $this->getValueArray()) {
+            
+            $data = [];
+            
+            foreach ($values as $value) {
+                $data[] = $this->getResultData($this->getValueRecord($value), true);
+            }
+            
+            $config['data'] = $data;
+            
         }
         
         return $config;

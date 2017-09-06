@@ -19,6 +19,9 @@ namespace SilverWare\Select2\Forms;
 
 use SilverStripe\Core\Convert;
 use SilverStripe\Forms\DropdownField;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\DataObjectInterface;
+use SilverStripe\ORM\Relation;
 
 /**
  * An extension of the dropdown field class for a Select2 field.
@@ -47,6 +50,13 @@ class Select2Field extends DropdownField
      * @var array
      */
     protected $config;
+    
+    /**
+     * Defines whether the field can handle multiple options.
+     *
+     * @var boolean
+     */
+    protected $multiple = false;
     
     /**
      * Constructs the object upon instantiation.
@@ -117,6 +127,50 @@ class Select2Field extends DropdownField
     }
     
     /**
+     * Defines the value of the multiple attribute.
+     *
+     * @param boolean $multiple
+     *
+     * @return $this
+     */
+    public function setMultiple($multiple)
+    {
+        $this->multiple = (boolean) $multiple;
+        
+        return $this;
+    }
+    
+    /**
+     * Answers the value of the multiple attribute.
+     *
+     * @return boolean
+     */
+    public function getMultiple()
+    {
+        return $this->multiple;
+    }
+    
+    /**
+     * Answers the multiple name of the field.
+     *
+     * @return string
+     */
+    public function getMultipleName()
+    {
+        return sprintf('%s[]', $this->getName());
+    }
+    
+    /**
+     * Answers true if the field handles multiple tags.
+     *
+     * @return boolean
+     */
+    public function isMultiple()
+    {
+        return $this->getMultiple();
+    }
+    
+    /**
      * Answers an array of HTML attributes for the field.
      *
      * @return array
@@ -127,6 +181,11 @@ class Select2Field extends DropdownField
             parent::getAttributes(),
             $this->getDataAttributes()
         );
+        
+        if ($this->isMultiple()) {
+            $attributes['multiple'] = true;
+            $attributes['name'] = $this->getMultipleName();
+        }
         
         if (!isset($attributes['data-placeholder'])) {
             $attributes['data-placeholder'] = $this->getEmptyString();
@@ -149,6 +208,166 @@ class Select2Field extends DropdownField
         }
         
         return $attributes;
+    }
+    
+    /**
+     * Defines the value of the field.
+     *
+     * @param mixed $value
+     * @param array|DataObject $data
+     *
+     * @return $this
+     */
+    public function setValue($value, $data = null)
+    {
+        if ($data instanceof DataObject) {
+            $this->loadFrom($data);
+            return $this;
+        }
+        
+        return parent::setValue($value);
+    }
+    
+    /**
+     * Answers the value(s) of this field as an array.
+     *
+     * @return array
+     */
+    public function getValueArray()
+    {
+        return $this->getListValues($this->Value());
+    }
+    
+    /**
+     * Loads the value of the field from the given data object.
+     *
+     * @param DataObjectInterface $record
+     *
+     * @return void
+     */
+    public function loadFrom(DataObjectInterface $record)
+    {
+        // Obtain Field Name:
+        
+        $fieldName = $this->getName();
+        
+        // Bail Early (if needed):
+        
+        if (empty($fieldName) || empty($record)) {
+            return;
+        }
+        
+        // Determine Value Mode:
+        
+        if (!$this->isMultiple()) {
+            
+            // Load Singular Value:
+            
+            parent::setValue($record->$fieldName);
+            
+        } else {
+            
+            // Load Multiple Value:
+            
+            $relation = $this->getNamedRelation($record);
+            
+            if ($relation instanceof Relation) {
+                $this->loadFromRelation($relation);
+            } elseif ($record->hasField($fieldName)) {
+                parent::setValue($this->stringDecode($record->$fieldName));
+            }
+            
+        }
+    }
+    
+    /**
+     * Saves the value of the field into the given data object.
+     *
+     * @param DataObjectInterface $record
+     *
+     * @return void
+     */
+    public function saveInto(DataObjectInterface $record)
+    {
+        // Obtain Field Name:
+        
+        $fieldName = $this->getName();
+        
+        // Bail Early (if needed):
+        
+        if (empty($fieldName) || empty($record)) {
+            return;
+        }
+        
+        // Determine Value Mode:
+        
+        if (!$this->isMultiple()) {
+            
+            // Save Singular Value:
+            
+            parent::saveInto($record);
+            
+        } else {
+            
+            // Save Multiple Value:
+            
+            $relation = $this->getNamedRelation($record);
+            
+            if ($relation instanceof Relation) {
+                $this->saveIntoRelation($relation);
+            } elseif ($record->hasField($fieldName)) {
+                $record->$fieldName = $this->stringEncode($this->getValueArray());
+            }
+            
+        }
+    }
+    
+    /**
+     * Loads the value of the field from the given relation.
+     *
+     * @param Relation $relation
+     *
+     * @return void
+     */
+    public function loadFromRelation(Relation $relation)
+    {
+        parent::setValue(array_values($relation->getIDList()));
+    }
+    
+    /**
+     * Saves the value of the field into the given relation.
+     *
+     * @param Relation $relation
+     *
+     * @return void
+     */
+    public function saveIntoRelation(Relation $relation)
+    {
+        $relation->setByIDList($this->getValueArray());
+    }
+    
+    /**
+     * Converts the given array of values into a string.
+     *
+     * @param array $values
+     *
+     * @return string
+     */
+    public function stringEncode($values)
+    {
+        return $values ? Convert::array2json(array_values($values)) : null;
+    }
+    
+    /**
+     * Decodes the given string of values into an array.
+     *
+     * @param string $values
+     *
+     * @return array
+     */
+    public function stringDecode($values)
+    {
+        return $values ? Convert::json2array($values) : [];
     }
     
     /**
@@ -183,5 +402,17 @@ class Select2Field extends DropdownField
         }
         
         return $config;
+    }
+    
+    /**
+     * Answers the relation with the field name from the given data object.
+     *
+     * @param DataObjectInterface $record
+     *
+     * @return Relation
+     */
+    protected function getNamedRelation(DataObjectInterface $record)
+    {
+        return $record->hasMethod($this->Name) ? $record->{$this->Name}() : null;
     }
 }
