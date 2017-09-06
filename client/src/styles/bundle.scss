@@ -1,0 +1,24 @@
+/* SilverWare Select2 Bundle
+===================================================================================================================== */
+
+// Import SilverStripe Admin Styles:
+
+@import "~silverstripe-admin/styles/variables";
+
+// Import Local Variables:
+
+@import "variables";
+
+// Import Select2 Core Styles:
+
+@import "~select2/src/scss/core";
+
+// Import Bootstrap Styles:
+
+@import "~bootstrap/scss/mixins";
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+
+// Import Form Fields:
+
+@import "forms/Select2Field";

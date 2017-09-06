@@ -1,0 +1,11 @@
+---
+Name: silverware-select2
+---
+
+# Configure Admin Requirements:
+
+SilverStripe\Admin\LeftAndMain:
+  extra_requirements_css:
+    - silverware-select2/client/dist/styles/bundle.css
+  extra_requirements_javascript:
+    - silverware-select2/client/dist/js/bundle.js
