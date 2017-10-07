@@ -1,6 +1,6 @@
 {
   "name": "silverware/select2",
-  "type": "silverstripe-module",
+  "type": "silverstripe-vendormodule",
   "description": "SilverWare Select2 Module.",
   "homepage": "https://github.com/praxisnetau/silverware-select2",
   "keywords": [
@@ -30,7 +30,9 @@
     "branch-alias": {
       "dev-master": "1.0.x-dev"
     },
-    "installer-name": "silverware-select2"
+    "expose": [
+      "client/dist"
+    ]
   },
   "minimum-stability": "dev",
   "prefer-stable": true
