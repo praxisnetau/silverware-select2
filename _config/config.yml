@@ -6,6 +6,6 @@ Name: silverware-select2
 
 SilverStripe\Admin\LeftAndMain:
   extra_requirements_css:
-    - silverware-select2/client/dist/styles/bundle.css
+    - "silverware/select2: client/dist/styles/bundle.css"
   extra_requirements_javascript:
-    - silverware-select2/client/dist/js/bundle.js
+    - "silverware/select2: client/dist/js/bundle.js"
