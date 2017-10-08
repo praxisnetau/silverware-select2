@@ -14,13 +14,3 @@
  * @license https://opensource.org/licenses/BSD-3-Clause BSD-3-Clause
  * @link https://github.com/praxisnetau/silverware-select2
  */
-
-// Define Module Constants:
-
-if (!defined('SILVERWARE_SELECT2_DIR')) {
-    define('SILVERWARE_SELECT2_DIR', basename(__DIR__));
-}
-
-if (!defined('SILVERWARE_SELECT2_PATH')) {
-    define('SILVERWARE_SELECT2_PATH', realpath(__DIR__));
-}
