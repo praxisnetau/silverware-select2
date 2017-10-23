@@ -611,12 +611,13 @@ class Select2AjaxField extends Select2Field
      */
     public function saveIntoRelation(Relation $relation)
     {
-        $relation->setByIDList(
-            $this->getList()->filter(
-                $this->getIDField(),
-                $this->getValueArray()
-            )->getIDList()
-        );
+        $ids = [];
+        
+        if ($values = $this->getValueArray()) {
+            $ids = $this->getList()->filter($this->getIDField(), $values)->getIDList();
+        }
+        
+        $relation->setByIDList($ids);
     }
     
     /**
