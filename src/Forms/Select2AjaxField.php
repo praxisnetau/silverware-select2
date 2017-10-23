@@ -697,8 +697,8 @@ class Select2AjaxField extends Select2Field
     protected function getResultData(ViewableData $record, $selected = false)
     {
         return [
-            'id' => $record->getField($this->getIDField()),
-            'text' => $record->getField($this->getTextField()),
+            'id' => $record->{$this->getIDField()},
+            'text' => $record->{$this->getTextField()},
             'formattedResult' => $this->getFormattedResult($record),
             'formattedSelection' => $this->getFormattedSelection($record),
             'selected' => $selected
