@@ -229,6 +229,23 @@ class Select2Field extends DropdownField
     }
     
     /**
+     * Answers true if the current value of this field matches the given option value.
+     *
+     * @param mixed $dataValue
+     * @param mixed $userValue
+     *
+     * @return boolean
+     */
+    public function isSelectedValue($dataValue, $userValue)
+    {
+        if (!$this->isMultiple() || !is_array($userValue)) {
+            return parent::isSelectedValue($dataValue, $userValue);
+        }
+        
+        return in_array($dataValue, $userValue);
+    }
+    
+    /**
      * Answers the value(s) of this field as an array.
      *
      * @return array
@@ -344,6 +361,64 @@ class Select2Field extends DropdownField
     public function saveIntoRelation(Relation $relation)
     {
         $relation->setByIDList($this->getValueArray());
+    }
+    
+    /**
+     * Performs validation on the receiver.
+     *
+     * @param Validator $validator
+     *
+     * @return boolean
+     */
+    public function validate($validator)
+    {
+        // Call Parent Method (if not multiple):
+        
+        if (!$this->isMultiple()) {
+            return parent::validate($validator);
+        }
+        
+        // Obtain User Values:
+        
+        $values = $this->getValueArray();
+        
+        // Detect Invalid Values:
+        
+        $invalid = array_filter(
+            $values,
+            function ($userValue) {
+                foreach ($this->getValidValues() as $formValue) {
+                    if ($this->isSelectedValue($formValue, $userValue)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        );
+        
+        // Answer Success (if none invalid):
+        
+        if (empty($invalid)) {
+            return true;
+        }
+        
+        // Define Validation Error:
+        
+        $validator->validationError(
+            $this->getName(),
+            _t(
+                __CLASS__ . '.INVALIDOPTIONS',
+                'Please select values within the list provided. Invalid option(s) {values} given.',
+                [
+                    'values' => implode(', ', $invalid)
+                ]
+            ),
+            'validation'
+        );
+        
+        // Answer Failure (invalid values detected):
+        
+        return false;
     }
     
     /**
