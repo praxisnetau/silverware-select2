@@ -780,7 +780,11 @@ class Select2AjaxField extends Select2Field
             $data = [];
             
             foreach ($values as $value) {
-                $data[] = $this->getResultData($this->getValueRecord($value), true);
+                
+                if ($record = $this->getValueRecord($value)) {
+                    $data[] = $this->getResultData($record, true);
+                }
+                
             }
             
             $config['data'] = $data;
