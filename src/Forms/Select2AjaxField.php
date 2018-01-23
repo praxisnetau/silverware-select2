@@ -479,6 +479,27 @@ class Select2AjaxField extends Select2Field
     }
     
     /**
+     * Updates the text field, search fields and sort order to the specified field name.
+     *
+     * @param string $field
+     * @param string $order
+     *
+     * @return $this
+     */
+    public function setDescriptor($field, $order = 'ASC')
+    {
+        // Define Attributes:
+        
+        $this->setTextField($field);
+        $this->setSearchFields([$field]);
+        $this->setSortBy([$field => $order]);
+        
+        // Answer Self:
+        
+        return $this;
+    }
+    
+    /**
      * Answers an array of data attributes for the field.
      *
      * @return array
@@ -780,7 +801,11 @@ class Select2AjaxField extends Select2Field
             $data = [];
             
             foreach ($values as $value) {
-                $data[] = $this->getResultData($this->getValueRecord($value), true);
+                
+                if ($record = $this->getValueRecord($value)) {
+                    $data[] = $this->getResultData($record, true);
+                }
+                
             }
             
             $config['data'] = $data;

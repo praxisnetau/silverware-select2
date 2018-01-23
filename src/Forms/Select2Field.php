@@ -19,6 +19,8 @@ namespace SilverWare\Select2\Forms;
 
 use SilverStripe\Core\Convert;
 use SilverStripe\Forms\DropdownField;
+use SilverStripe\Forms\FormField;
+use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectInterface;
 use SilverStripe\ORM\Relation;
@@ -89,6 +91,74 @@ class Select2Field extends DropdownField
     public function Type()
     {
         return sprintf('select2field %s', parent::Type());
+    }
+    
+    /**
+     * Renders the field for the template.
+     *
+     * @param array $properties
+     *
+     * @return DBHTMLText
+     */
+    public function Field($properties = [])
+    {
+        // Merge Options:
+        
+        $properties = array_merge($properties, [
+            'Options' => $this->getOptions()
+        ]);
+        
+        // Render Field:
+        
+        return FormField::Field($properties);
+    }
+    
+    /**
+     * Answers an array list containing the options for the field.
+     *
+     * @return ArrayList
+     */
+    public function getOptions()
+    {
+        // Create Options List:
+        
+        $options = ArrayList::create();
+        
+        // Iterate Source Items:
+        
+        foreach ($this->getSourceEmpty() as $value => $title) {
+            $options->push($this->getFieldOption($value, $title));
+        }
+        
+        // Handle Tags:
+        
+        if ($this->usesTags()) {
+            
+            // Obtain Source Values:
+            
+            $values = $this->getSourceValues();
+            
+            // Iterate Value Array:
+            
+            foreach ($this->getValueArray() as $value) {
+                
+                // Handle Tag Values:
+                
+                if (!in_array($value, $values)) {
+                    $options->push($this->getFieldOption($value, $value));
+                }
+                
+            }
+            
+        }
+        
+        // Apply Extensions:
+        
+        $this->extend('updateOptions', $options);
+        
+        // Answer Options List:
+        
+        return $options;
     }
     
     /**
@@ -168,6 +238,18 @@ class Select2Field extends DropdownField
     public function isMultiple()
     {
         return $this->getMultiple();
+    }
+    
+    /**
+     * Answers true if the field is configured to use tags.
+     *
+     * @return boolean
+     */
+    public function usesTags()
+    {
+        $config = $this->getFieldConfig();
+        
+        return (isset($config['tags']) && $config['tags']);
     }
     
     /**
@@ -372,6 +454,12 @@ class Select2Field extends DropdownField
      */
     public function validate($validator)
     {
+        // Baily Early (if tags are used):
+        
+        if ($this->usesTags()) {
+            return true;
+        }
+        
         // Call Parent Method (if not multiple):
         
         if (!$this->isMultiple()) {
