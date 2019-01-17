@@ -19,13 +19,13 @@ $.entwine('silverware.select2', function($) {
       // Define Result Template:
       
       var templateResult = function(state) {
-        return (state.id && state.formattedResult) ? $(state.formattedResult) : state.text;
+        return (state.id && state.formattedResult) ? state.formattedResult : state.text;
       };
       
       // Define Selection Template:
       
       var templateSelection = function(state) {
-        return (state.id && state.formattedSelection) ? $(state.formattedSelection) : state.text;
+        return (state.id && state.formattedSelection) ? state.formattedSelection : state.text;
       };
       
       // Initialise Select2:
